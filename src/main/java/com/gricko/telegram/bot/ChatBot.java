@@ -1,6 +1,7 @@
 package com.gricko.telegram.bot;
 
 import com.gricko.telegram.model.User;
+import com.gricko.telegram.parser.JsouParser;
 import com.gricko.telegram.service.UserService;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,16 +13,19 @@ import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.IOException;
 import java.util.List;
 
 @Component
 @PropertySource("classpath:telegram.properties")
 public class ChatBot extends TelegramLongPollingBot {
 
+
     private static final Logger LOGGER = LogManager.getLogger(ChatBot.class);
 
     private static final String BROADCAST = "broadcast ";
     private static final String LIST_USERS = "users";
+    private static final String SEND_QUOTE = "quote";
 
     private final UserService userService;
 
@@ -91,21 +95,32 @@ public class ChatBot extends TelegramLongPollingBot {
     }
 
     private boolean checkIfAdminCommand(User user, String text){
-        if (user == null || !user.getAdmin())
-            return false;
+        if (user == null || !user.getAdmin()) {
+            if (text.equals(SEND_QUOTE)){
+                LOGGER.info("User command: " + SEND_QUOTE);
+                JsouParser jsouParser = new JsouParser();
+                String quote = null;
+                try {
+                    quote = jsouParser.sendQuote();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                sendMessage(user.getChatId(),quote);
+            }
+        }else {
+            if (text.startsWith(BROADCAST)) {
+                LOGGER.info("Admin command received: " + BROADCAST);
 
-        if (text.startsWith(BROADCAST)){
-            LOGGER.info("Admin command received: " + BROADCAST);
+                text = text.substring(BROADCAST.length());
+                broadcast(text);
 
-            text = text.substring(BROADCAST.length());
-            broadcast(text);
+                return true;
+            } else if (text.equals(LIST_USERS)) {
+                LOGGER.info("Admin command received: " + LIST_USERS);
 
-            return true;
-        }else if (text.equals(LIST_USERS)){
-            LOGGER.info("Admin command received: " + LIST_USERS);
-
-            listUsers(user);
-            return true;
+                listUsers(user);
+                return true;
+            }
         }
         return false;
     }
@@ -122,7 +137,7 @@ public class ChatBot extends TelegramLongPollingBot {
     }
 
     private void listUsers(User admin){
-        StringBuilder sb = new StringBuilder("Al    l user list: \r\n");
+        StringBuilder sb = new StringBuilder("All users list: \r\n");
         List<User> users = userService.findAllUsers();
 
         users.forEach(user ->

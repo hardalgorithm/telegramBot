@@ -64,13 +64,15 @@ public enum BotState {
     Approved(false){
         @Override
         public void enter(BotContext context){
-            sendMessage(context,"Thanks YOU!");
+
+            sendMessage(context,"Thanks YOU! \n you can use command 'quote'!");
         }
 
         @Override
-        public BotState nextState(){
-            return Start;
+        public BotState nextState() {
+            return null;
         }
+
     };
 
     private static BotState[]states;
